@@ -1,0 +1,56 @@
+BG school.png
+CHAR rance.png
+BGM school.wav
+
+SAY 兰斯：喂！这里是什么地方？
+SAY 兰斯：看起来像是一所学校。
+VOICE hello.wav
+SAY 一个陌生的声音从远处传来。
+
+CHOICE
+1 进入学校 -> SCHOOL
+2 去找那个声音 -> FIND
+3 直接回家 -> HOME
+
+LABEL SCHOOL
+BG school_evening.png
+CHAR girl.png
+SAY 你走进了学校。
+SAY 一个陌生少女站在走廊尽头。
+
+CHOICE
+1 和她说话 -> TALK
+2 暂时离开 -> LEAVE
+
+LABEL TALK
+VOICE hello.wav
+SAY 少女：你终于来了。
+SAY 兰斯：你认识我？
+CHAR rance.png
+SAY 少女没有回答，只是转身走进了教室。
+JUMP ENDING
+
+LABEL FIND
+BG school_night.png
+CHAR rance.png
+SAY 你顺着声音来到了操场。
+VOICE bye.wav
+SAY 可是那里什么也没有。
+JUMP ENDING
+
+LABEL HOME
+CHAR NONE
+SAY 你决定还是先回家。
+SAY 今天的冒险就到这里吧。
+JUMP ENDING
+
+LABEL LEAVE
+CHAR NONE
+SAY 你暂时离开了学校。
+JUMP ENDING
+
+LABEL ENDING
+BG school.png
+SAY 你的故事还在继续……
+SAY —— MiniGalEngine Demo v0.1 ——
+END
