@@ -49,6 +49,10 @@ public class ProjectManager {
         }
 
 
+        projectName =
+                projectName.trim();
+
+
         // =====================================================
         // 项目根目录
         // =====================================================
@@ -81,8 +85,7 @@ public class ProjectManager {
 
             throw new IOException(
                     "无法创建项目目录："
-                            + projectDirectory
-                            .getAbsolutePath()
+                            + projectDirectory.getAbsolutePath()
             );
         }
 
@@ -96,6 +99,7 @@ public class ProjectManager {
                         projectDirectory,
                         EditorConstants.SCRIPTS_DIR
                 );
+
 
         createDirectory(
                 scriptsDirectory
@@ -111,6 +115,7 @@ public class ProjectManager {
                         projectDirectory,
                         EditorConstants.RESOURCES_DIR
                 );
+
 
         createDirectory(
                 resourcesDirectory
@@ -142,24 +147,40 @@ public class ProjectManager {
 
 
         // =====================================================
-        // resources/bgm
+        // resources/audio
+        // =====================================================
+
+        File audioDirectory =
+                new File(
+                        resourcesDirectory,
+                        "audio"
+                );
+
+
+        createDirectory(
+                audioDirectory
+        );
+
+
+        // =====================================================
+        // resources/audio/bgm
         // =====================================================
 
         createDirectory(
                 new File(
-                        resourcesDirectory,
+                        audioDirectory,
                         EditorConstants.BGM_DIR
                 )
         );
 
 
         // =====================================================
-        // resources/voice
+        // resources/audio/voice
         // =====================================================
 
         createDirectory(
                 new File(
-                        resourcesDirectory,
+                        audioDirectory,
                         EditorConstants.VOICE_DIR
                 )
         );
@@ -353,8 +374,7 @@ public class ProjectManager {
 
             throw new IOException(
                     "无法创建目录："
-                            + directory
-                            .getAbsolutePath()
+                            + directory.getAbsolutePath()
             );
         }
     }

@@ -157,7 +157,7 @@ public final class EditorConstants {
 
 
     // =========================
-    // Project Tree
+    // Tree
     // =========================
 
     public static final int TREE_ROW_HEIGHT =

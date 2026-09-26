@@ -2,42 +2,50 @@ package main.java.Editor.window;
 
 import main.java.Editor.constant.EditorConstants;
 import main.java.Editor.manager.ProjectManager;
+import main.java.Editor.manager.ResourceManager;
+import main.java.Editor.manager.RuntimeLauncher;
+import main.java.Editor.manager.ScriptManager;
+import main.java.Editor.panel.EditorMainPanel;
+import main.java.Editor.panel.ProjectPanel;
+import main.java.Editor.panel.ResourcePanel;
+import main.java.Editor.panel.ScriptEditorPanel;
+import main.java.Editor.panel.StatusBarPanel;
+import main.java.Editor.panel.TopBarPanel;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
 import java.awt.*;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.Arrays;
 
 public class EditorWindow extends JFrame {
 
     // =========================================================
-    // 项目管理
+    // Manager
     // =========================================================
 
     private final ProjectManager projectManager;
 
+    private final ScriptManager scriptManager;
 
-    // =========================================================
-    // UI
-    // =========================================================
+    private final RuntimeLauncher runtimeLauncher;
 
-    private JTree projectTree;
-
-    private JTree resourceTree;
-
-    private JTextArea scriptEditor;
-
-    private JLabel statusLabel;
+    private final ResourceManager resourceManager;
 
 
     // =========================================================
-    // 当前正在编辑的文件
+    // Panels
+    // =========================================================
+
+    private final ProjectPanel projectPanel;
+
+    private final ScriptEditorPanel scriptEditorPanel;
+
+    private final ResourcePanel resourcePanel;
+
+    private final StatusBarPanel statusBarPanel;
+
+
+    // =========================================================
+    // 当前打开文件
     // =========================================================
 
     private File currentFile;
@@ -52,6 +60,71 @@ public class EditorWindow extends JFrame {
         projectManager =
                 new ProjectManager();
 
+
+        scriptManager =
+                new ScriptManager(
+                        projectManager
+                );
+
+
+        resourceManager =
+                new ResourceManager(
+                        projectManager
+                );
+
+
+        runtimeLauncher =
+                new RuntimeLauncher(
+                        projectManager
+                );
+
+
+        // =====================================================
+        // 创建编辑器
+        // =====================================================
+
+        scriptEditorPanel =
+                new ScriptEditorPanel();
+
+
+        // =====================================================
+        // Project Panel
+        // =====================================================
+
+        projectPanel =
+                new ProjectPanel(
+                        this::createNewScript,
+                        this::openScriptFromTree,
+                        this::renameScript,
+                        this::deleteScript
+                );
+
+
+        // =====================================================
+        // Resource Panel
+        // =====================================================
+
+        resourcePanel =
+                new ResourcePanel(
+                        this::createNewResourceFile,
+                        this::createNewResourceFolder,
+                        this::openResourceText,
+                        this::renameResource,
+                        this::deleteResource
+                );
+
+
+        // =====================================================
+        // Status
+        // =====================================================
+
+        statusBarPanel =
+                new StatusBarPanel();
+
+
+        // =====================================================
+        // Window
+        // =====================================================
 
         setTitle(
                 EditorConstants.EDITOR_TITLE
@@ -83,11 +156,13 @@ public class EditorWindow extends JFrame {
         setupLookAndFeel();
 
         initUI();
+
+        updateStatus();
     }
 
 
     // =========================================================
-    // 初始化 UI
+    // UI
     // =========================================================
 
     private void initUI() {
@@ -97,20 +172,50 @@ public class EditorWindow extends JFrame {
         );
 
 
+        // =====================================================
+        // Top Bar
+        // =====================================================
+
+        TopBarPanel topBar =
+                new TopBarPanel(
+                        this::createNewProject,
+                        this::openProject,
+                        this::saveFile,
+                        this::runGame,
+                        this::exportGame
+                );
+
+
         add(
-                createTopBar(),
+                topBar,
                 BorderLayout.NORTH
         );
 
 
+        // =====================================================
+        // Main
+        // =====================================================
+
+        EditorMainPanel mainPanel =
+                new EditorMainPanel(
+                        projectPanel,
+                        scriptEditorPanel,
+                        resourcePanel
+                );
+
+
         add(
-                createMainContent(),
+                mainPanel,
                 BorderLayout.CENTER
         );
 
 
+        // =====================================================
+        // Status Bar
+        // =====================================================
+
         add(
-                createStatusBar(),
+                statusBarPanel,
                 BorderLayout.SOUTH
         );
     }
@@ -127,42 +232,35 @@ public class EditorWindow extends JFrame {
                 EditorConstants.BACKGROUND
         );
 
-
         UIManager.put(
                 "ScrollPane.background",
                 EditorConstants.BACKGROUND
         );
-
 
         UIManager.put(
                 "Viewport.background",
                 EditorConstants.BACKGROUND
         );
 
-
         UIManager.put(
                 "Label.foreground",
                 EditorConstants.TEXT
         );
-
 
         UIManager.put(
                 "Tree.background",
                 EditorConstants.PANEL
         );
 
-
         UIManager.put(
                 "Tree.foreground",
                 EditorConstants.TEXT
         );
 
-
         UIManager.put(
                 "Tree.selectionBackground",
                 EditorConstants.ACCENT
         );
-
 
         UIManager.put(
                 "Tree.selectionForeground",
@@ -172,273 +270,16 @@ public class EditorWindow extends JFrame {
 
 
     // =========================================================
-    // 顶部工具栏
-    // =========================================================
-
-    private JPanel createTopBar() {
-
-        JPanel bar =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-
-        bar.setBackground(
-                EditorConstants.PANEL
-        );
-
-
-        bar.setBorder(
-                new MatteBorder(
-                        0,
-                        0,
-                        1,
-                        0,
-                        EditorConstants.BORDER
-                )
-        );
-
-
-        // =====================================================
-        // Logo
-        // =====================================================
-
-        JPanel left =
-                new JPanel(
-                        new FlowLayout(
-                                FlowLayout.LEFT,
-                                15,
-                                8
-                        )
-                );
-
-
-        left.setOpaque(false);
-
-
-        JLabel logo =
-                new JLabel(
-                        "MG"
-                );
-
-
-        logo.setOpaque(true);
-
-
-        logo.setBackground(
-                EditorConstants.ACCENT
-        );
-
-
-        logo.setForeground(
-                Color.WHITE
-        );
-
-
-        logo.setHorizontalAlignment(
-                SwingConstants.CENTER
-        );
-
-
-        logo.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.BOLD,
-                        16
-                )
-        );
-
-
-        logo.setPreferredSize(
-                new Dimension(
-                        38,
-                        32
-                )
-        );
-
-
-        JLabel title =
-                new JLabel(
-                        EditorConstants.APP_NAME
-                );
-
-
-        title.setForeground(
-                EditorConstants.TEXT
-        );
-
-
-        title.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.BOLD,
-                        16
-                )
-        );
-
-
-        left.add(logo);
-
-        left.add(title);
-
-
-        // =====================================================
-        // 操作按钮
-        // =====================================================
-
-        JPanel actions =
-                new JPanel(
-                        new FlowLayout(
-                                FlowLayout.LEFT,
-                                5,
-                                8
-                        )
-                );
-
-
-        actions.setOpaque(false);
-
-
-        // -----------------------------------------------------
-        // 新建
-        // -----------------------------------------------------
-
-        JButton newButton =
-                createButton(
-                        "新建"
-                );
-
-
-        newButton.addActionListener(
-                e -> createNewProject()
-        );
-
-
-        actions.add(
-                newButton
-        );
-
-
-        // -----------------------------------------------------
-        // 打开
-        // -----------------------------------------------------
-
-        JButton openButton =
-                createButton(
-                        "打开"
-                );
-
-
-        openButton.addActionListener(
-                e -> openProject()
-        );
-
-
-        actions.add(
-                openButton
-        );
-
-
-        // -----------------------------------------------------
-        // 保存
-        // -----------------------------------------------------
-
-        JButton saveButton =
-                createButton(
-                        "保存"
-                );
-
-
-        saveButton.addActionListener(
-                e -> saveFile()
-        );
-
-
-        actions.add(
-                saveButton
-        );
-
-
-        // -----------------------------------------------------
-        // 分隔
-        // -----------------------------------------------------
-
-        actions.add(
-                createSeparator()
-        );
-
-
-        // -----------------------------------------------------
-        // 运行
-        // -----------------------------------------------------
-
-        JButton runButton =
-                createButton(
-                        "▶ 运行"
-                );
-
-
-        runButton.setBackground(
-                EditorConstants.ACCENT
-        );
-
-
-        runButton.setForeground(
-                Color.WHITE
-        );
-
-
-        runButton.addActionListener(
-                e -> runGame()
-        );
-
-
-        actions.add(
-                runButton
-        );
-
-
-        // -----------------------------------------------------
-        // 导出
-        // -----------------------------------------------------
-
-        JButton exportButton =
-                createButton(
-                        "导出"
-                );
-
-
-        exportButton.addActionListener(
-                e -> exportGame()
-        );
-
-
-        actions.add(
-                exportButton
-        );
-
-
-        bar.add(
-                left,
-                BorderLayout.WEST
-        );
-
-
-        bar.add(
-                actions,
-                BorderLayout.CENTER
-        );
-
-
-        return bar;
-    }
-
-
-    // =========================================================
     // 新建项目
     // =========================================================
 
     private void createNewProject() {
+
+        if (!confirmSaveIfNeeded()) {
+
+            return;
+        }
+
 
         String projectName =
                 JOptionPane.showInputDialog(
@@ -472,10 +313,6 @@ public class EditorWindow extends JFrame {
         }
 
 
-        // =====================================================
-        // 选择项目位置
-        // =====================================================
-
         JFileChooser chooser =
                 new JFileChooser();
 
@@ -505,18 +342,10 @@ public class EditorWindow extends JFrame {
         }
 
 
-        File parentDirectory =
-                chooser.getSelectedFile();
-
-
-        // =====================================================
-        // 创建项目
-        // =====================================================
-
         try {
 
             projectManager.createProject(
-                    parentDirectory,
+                    chooser.getSelectedFile(),
                     projectName
             );
 
@@ -534,11 +363,9 @@ public class EditorWindow extends JFrame {
 
         } catch (Exception ex) {
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    ex.getMessage(),
+            showError(
                     "创建项目失败",
-                    JOptionPane.ERROR_MESSAGE
+                    ex
             );
         }
     }
@@ -549,6 +376,12 @@ public class EditorWindow extends JFrame {
     // =========================================================
 
     private void openProject() {
+
+        if (!confirmSaveIfNeeded()) {
+
+            return;
+        }
+
 
         JFileChooser chooser =
                 new JFileChooser();
@@ -579,14 +412,10 @@ public class EditorWindow extends JFrame {
         }
 
 
-        File directory =
-                chooser.getSelectedFile();
-
-
         try {
 
             projectManager.openProject(
-                    directory
+                    chooser.getSelectedFile()
             );
 
 
@@ -595,11 +424,9 @@ public class EditorWindow extends JFrame {
 
         } catch (Exception ex) {
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    ex.getMessage(),
+            showError(
                     "打开项目失败",
-                    JOptionPane.ERROR_MESSAGE
+                    ex
             );
         }
     }
@@ -611,9 +438,7 @@ public class EditorWindow extends JFrame {
 
     private void loadProject() {
 
-        if (
-                !projectManager.hasProject()
-        ) {
+        if (!projectManager.hasProject()) {
 
             return;
         }
@@ -622,296 +447,109 @@ public class EditorWindow extends JFrame {
         currentFile = null;
 
 
-        loadProjectTree();
+        scriptEditorPanel.clear();
 
-        loadResourceTree();
 
-        clearEditor();
+        projectPanel.reload(
+                projectManager.getProjectRoot()
+        );
+
+
+        resourcePanel.reload(
+                projectManager.getResourcesDirectory()
+        );
+
 
         updateStatus();
     }
 
 
     // =========================================================
-    // 加载 Project Tree
+    // 从项目树打开脚本
     // =========================================================
 
-    private void loadProjectTree() {
-
-        File root =
-                projectManager.getProjectRoot();
-
-
-        if (
-                root == null
-                        || !root.exists()
-        ) {
-
-            return;
-        }
-
-
-        FileTreeNode rootNode =
-                createFileTree(
-                        root
-                );
-
-
-        projectTree.setModel(
-                new DefaultTreeModel(
-                        rootNode
-                )
-        );
-
-
-        projectTree.expandRow(
-                0
-        );
-    }
-
-
-    // =========================================================
-    // 加载 Resource Tree
-    // =========================================================
-
-    private void loadResourceTree() {
-
-        File resources =
-                projectManager
-                        .getResourcesDirectory();
-
-
-        if (
-                resources == null
-                        || !resources.exists()
-        ) {
-
-            return;
-        }
-
-
-        FileTreeNode rootNode =
-                createFileTree(
-                        resources
-                );
-
-
-        resourceTree.setModel(
-                new DefaultTreeModel(
-                        rootNode
-                )
-        );
-
-
-        resourceTree.expandRow(
-                0
-        );
-    }
-
-
-    // =========================================================
-    // 文件树
-    // =========================================================
-
-    private FileTreeNode createFileTree(
+    private void openScriptFromTree(
             File file
     ) {
 
-        FileTreeNode node =
-                new FileTreeNode(
-                        file
-                );
+        if (!confirmSaveIfNeeded()) {
 
-
-        if (
-                !file.isDirectory()
-        ) {
-
-            return node;
+            return;
         }
 
 
-        File[] children =
-                file.listFiles();
+        openScript(file);
+    }
 
 
-        if (children == null) {
+    // =========================================================
+    // 打开脚本
+    // =========================================================
 
-            return node;
-        }
+    private void openScript(
+            File file
+    ) {
 
+        try {
 
-        // =====================================================
-        // 文件夹排前面
-        // =====================================================
-
-        Arrays.sort(
-                children,
-                (a, b) -> {
-
-                    if (
-                            a.isDirectory()
-                                    && !b.isDirectory()
-                    ) {
-
-                        return -1;
-                    }
+            String content =
+                    scriptManager.readScript(
+                            file
+                    );
 
 
-                    if (
-                            !a.isDirectory()
-                                    && b.isDirectory()
-                    ) {
-
-                        return 1;
-                    }
+            scriptEditorPanel.setContent(
+                    content
+            );
 
 
-                    return a.getName()
-                            .compareToIgnoreCase(
-                                    b.getName()
-                            );
-                }
-        );
+            currentFile =
+                    file;
 
 
-        for (
-                File child :
-                children
-        ) {
+            updateStatus();
 
-            node.add(
-                    createFileTree(
-                            child
-                    )
+
+        } catch (Exception ex) {
+
+            showError(
+                    "打开脚本失败",
+                    ex
             );
         }
-
-
-        return node;
     }
 
 
     // =========================================================
-    // Project Tree 点击
+    // 打开资源文本
     // =========================================================
 
-    private void setupProjectTreeListener() {
-
-        projectTree.addTreeSelectionListener(
-                e -> {
-
-                    DefaultMutableTreeNode node =
-                            (DefaultMutableTreeNode)
-                                    projectTree
-                                            .getLastSelectedPathComponent();
-
-
-                    if (node == null) {
-
-                        return;
-                    }
-
-
-                    File file =
-                            getFileFromTreeNode(
-                                    node
-                            );
-
-
-                    if (
-                            file == null
-                                    || !file.isFile()
-                    ) {
-
-                        return;
-                    }
-
-
-                    openFile(
-                            file
-                    );
-                }
-        );
-    }
-
-
-    // =========================================================
-    // Resource Tree 点击
-    // =========================================================
-
-    private void setupResourceTreeListener() {
-
-        resourceTree.addTreeSelectionListener(
-                e -> {
-
-                    DefaultMutableTreeNode node =
-                            (DefaultMutableTreeNode)
-                                    resourceTree
-                                            .getLastSelectedPathComponent();
-
-
-                    if (node == null) {
-
-                        return;
-                    }
-
-
-                    File file =
-                            getFileFromTreeNode(
-                                    node
-                            );
-
-
-                    if (
-                            file == null
-                                    || !file.isFile()
-                    ) {
-
-                        return;
-                    }
-
-
-                    openFile(
-                            file
-                    );
-                }
-        );
-    }
-
-
-    // =========================================================
-    // 从树节点获得 File
-    // =========================================================
-
-    private File getFileFromTreeNode(
-            DefaultMutableTreeNode node
-    ) {
-
-        if (
-                node instanceof FileTreeNode fileNode
-        ) {
-
-            return fileNode.getFile();
-        }
-
-
-        return null;
-    }
-
-
-    // =========================================================
-    // 打开文件
-    // =========================================================
-
-    private void openFile(
+    private void openResourceText(
             File file
     ) {
 
+        if (!confirmSaveIfNeeded()) {
+
+            return;
+        }
+
+
+        // =====================================================
+        // 非文本资源
+        // =====================================================
+
         if (
-                file == null
-                        || !file.isFile()
+                !file.isFile()
+                        || !resourceManager.isTextFile(file)
         ) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "该资源不是文本文件，不能在文本编辑器中打开：\n"
+                            + file.getName(),
+                    "资源文件",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
 
             return;
         }
@@ -920,19 +558,13 @@ public class EditorWindow extends JFrame {
         try {
 
             String content =
-                    Files.readString(
-                            file.toPath(),
-                            StandardCharsets.UTF_8
+                    resourceManager.readTextFile(
+                            file
                     );
 
 
-            scriptEditor.setText(
+            scriptEditorPanel.setContent(
                     content
-            );
-
-
-            scriptEditor.setCaretPosition(
-                    0
             );
 
 
@@ -940,34 +572,16 @@ public class EditorWindow extends JFrame {
                     file;
 
 
-            statusLabel.setText(
-                    "  正在编辑："
-                            + file.getName()
-            );
+            updateStatus();
 
 
         } catch (Exception ex) {
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "无法打开文件：\n"
-                            + ex.getMessage(),
-                    "打开失败",
-                    JOptionPane.ERROR_MESSAGE
+            showError(
+                    "打开资源失败",
+                    ex
             );
         }
-    }
-
-
-    // =========================================================
-    // 清空编辑器
-    // =========================================================
-
-    private void clearEditor() {
-
-        scriptEditor.setText("");
-
-        currentFile = null;
     }
 
 
@@ -976,6 +590,16 @@ public class EditorWindow extends JFrame {
     // =========================================================
 
     private void saveFile() {
+
+        saveCurrentFile();
+    }
+
+
+    // =========================================================
+    // 保存当前文件
+    // =========================================================
+
+    private boolean saveCurrentFile() {
 
         if (currentFile == null) {
 
@@ -986,33 +610,667 @@ public class EditorWindow extends JFrame {
                     JOptionPane.WARNING_MESSAGE
             );
 
+            return false;
+        }
+
+
+        try {
+
+            File scriptsDirectory =
+                    projectManager.getScriptsDirectory();
+
+
+            File resourcesDirectory =
+                    projectManager.getResourcesDirectory();
+
+
+            // =================================================
+            // scripts
+            // =================================================
+
+            if (
+                    scriptsDirectory != null
+                            && isInside(
+                            scriptsDirectory,
+                            currentFile
+                    )
+            ) {
+
+                scriptManager.saveScript(
+                        currentFile,
+                        scriptEditorPanel.getContent()
+                );
+            }
+
+            // =================================================
+            // resources
+            // =================================================
+
+            else if (
+                    resourcesDirectory != null
+                            && isInside(
+                            resourcesDirectory,
+                            currentFile
+                    )
+            ) {
+
+                resourceManager.saveTextFile(
+                        currentFile,
+                        scriptEditorPanel.getContent()
+                );
+            }
+
+            // =================================================
+            // 非项目文件
+            // =================================================
+
+            else {
+
+                throw new IllegalArgumentException(
+                        "当前文件不属于项目"
+                );
+            }
+
+
+            scriptEditorPanel.markSaved();
+
+
+            updateStatus();
+
+
+            return true;
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "保存失败",
+                    ex
+            );
+
+
+            return false;
+        }
+    }
+
+
+    // =========================================================
+    // 新建脚本
+    // =========================================================
+
+    private void createNewScript() {
+
+        if (!projectManager.hasProject()) {
+
+            return;
+        }
+
+
+        String scriptName =
+                JOptionPane.showInputDialog(
+                        this,
+                        "请输入脚本名称：",
+                        "新建脚本",
+                        JOptionPane.PLAIN_MESSAGE
+                );
+
+
+        if (scriptName == null) {
+
+            return;
+        }
+
+
+        scriptName =
+                scriptName.trim();
+
+
+        if (scriptName.isEmpty()) {
+
             return;
         }
 
 
         try {
 
-            Files.writeString(
-                    currentFile.toPath(),
-                    scriptEditor.getText(),
-                    StandardCharsets.UTF_8
+            File script =
+                    scriptManager.createScript(
+                            scriptName
+                    );
+
+
+            projectPanel.reload(
+                    projectManager.getProjectRoot()
             );
 
 
-            statusLabel.setText(
-                    "  已保存："
-                            + currentFile.getName()
+            openScript(script);
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "新建脚本失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 重命名脚本
+    // =========================================================
+
+    private void renameScript(
+            File script
+    ) {
+
+        if (script == null) {
+
+            return;
+        }
+
+
+        String newName =
+                JOptionPane.showInputDialog(
+                        this,
+                        "请输入新的脚本名称：",
+                        script.getName()
+                );
+
+
+        if (newName == null) {
+
+            return;
+        }
+
+
+        newName =
+                newName.trim();
+
+
+        if (newName.isEmpty()) {
+
+            return;
+        }
+
+
+        // =====================================================
+        // 当前脚本有修改
+        // =====================================================
+
+        if (
+                currentFile != null
+                        && currentFile.equals(script)
+                        && scriptEditorPanel.isModified()
+        ) {
+
+            if (!saveCurrentFile()) {
+
+                return;
+            }
+        }
+
+
+        try {
+
+            File newScript =
+                    scriptManager.renameScript(
+                            script,
+                            newName
+                    );
+
+
+            // =================================================
+            // 当前文件同步更新
+            // =================================================
+
+            if (
+                    currentFile != null
+                            && currentFile.equals(script)
+            ) {
+
+                currentFile =
+                        newScript;
+            }
+
+
+            projectPanel.reload(
+                    projectManager.getProjectRoot()
+            );
+
+
+            updateStatus();
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "重命名失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 删除脚本
+    // =========================================================
+
+    private void deleteScript(
+            File script
+    ) {
+
+        if (script == null) {
+
+            return;
+        }
+
+
+        int result =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        "确定删除脚本：\n"
+                                + script.getName()
+                                + "？",
+                        "删除脚本",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+
+
+        if (
+                result
+                        != JOptionPane.YES_OPTION
+        ) {
+
+            return;
+        }
+
+
+        try {
+
+            scriptManager.deleteScript(
+                    script
+            );
+
+
+            // =================================================
+            // 当前文件同步清空
+            // =================================================
+
+            if (
+                    currentFile != null
+                            && currentFile.equals(script)
+            ) {
+
+                currentFile = null;
+
+                scriptEditorPanel.clear();
+            }
+
+
+            projectPanel.reload(
+                    projectManager.getProjectRoot()
+            );
+
+
+            updateStatus();
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "删除失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 新建资源文件
+    // =========================================================
+
+    private void createNewResourceFile(
+            File parentDirectory
+    ) {
+
+        if (!projectManager.hasProject()) {
+
+            return;
+        }
+
+
+        String fileName =
+                JOptionPane.showInputDialog(
+                        this,
+                        "请输入资源文件名称：",
+                        "新建资源文件",
+                        JOptionPane.PLAIN_MESSAGE
+                );
+
+
+        if (fileName == null) {
+
+            return;
+        }
+
+
+        fileName =
+                fileName.trim();
+
+
+        if (fileName.isEmpty()) {
+
+            return;
+        }
+
+
+        try {
+
+            File file =
+                    resourceManager.createFile(
+                            parentDirectory,
+                            fileName
+                    );
+
+
+            resourcePanel.reload(
+                    projectManager.getResourcesDirectory()
+            );
+
+
+            // =================================================
+            // 文本资源自动打开
+            // =================================================
+
+            if (resourceManager.isTextFile(file)) {
+
+                openResourceText(file);
+            }
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "新建资源失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 新建资源文件夹
+    // =========================================================
+
+    private void createNewResourceFolder(
+            File parentDirectory
+    ) {
+
+        if (!projectManager.hasProject()) {
+
+            return;
+        }
+
+
+        String folderName =
+                JOptionPane.showInputDialog(
+                        this,
+                        "请输入文件夹名称：",
+                        "新建资源文件夹",
+                        JOptionPane.PLAIN_MESSAGE
+                );
+
+
+        if (folderName == null) {
+
+            return;
+        }
+
+
+        folderName =
+                folderName.trim();
+
+
+        if (folderName.isEmpty()) {
+
+            return;
+        }
+
+
+        try {
+
+            resourceManager.createDirectory(
+                    parentDirectory,
+                    folderName
+            );
+
+
+            resourcePanel.reload(
+                    projectManager.getResourcesDirectory()
             );
 
 
         } catch (Exception ex) {
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "保存失败：\n"
-                            + ex.getMessage(),
-                    "保存失败",
-                    JOptionPane.ERROR_MESSAGE
+            showError(
+                    "新建资源文件夹失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 重命名资源
+    // =========================================================
+
+    private void renameResource(
+            File file
+    ) {
+
+        if (file == null) {
+
+            return;
+        }
+
+
+        // =====================================================
+        // 当前资源有修改
+        // =====================================================
+
+        if (
+                currentFile != null
+                        && currentFile.equals(file)
+                        && scriptEditorPanel.isModified()
+        ) {
+
+            if (!saveCurrentFile()) {
+
+                return;
+            }
+        }
+
+
+        String newName =
+                JOptionPane.showInputDialog(
+                        this,
+                        "请输入新的名称：",
+                        file.getName()
+                );
+
+
+        if (newName == null) {
+
+            return;
+        }
+
+
+        newName =
+                newName.trim();
+
+
+        if (newName.isEmpty()) {
+
+            return;
+        }
+
+
+        try {
+
+            File newFile =
+                    resourceManager.rename(
+                            file,
+                            newName
+                    );
+
+
+            // =================================================
+            // 当前资源同步更新
+            // =================================================
+
+            if (
+                    currentFile != null
+                            && currentFile.equals(file)
+            ) {
+
+                currentFile =
+                        newFile;
+            }
+
+
+            resourcePanel.reload(
+                    projectManager.getResourcesDirectory()
+            );
+
+
+            updateStatus();
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "资源重命名失败",
+                    ex
+            );
+        }
+    }
+
+
+    // =========================================================
+    // 删除资源
+    // =========================================================
+
+    private void deleteResource(
+            File file
+    ) {
+
+        if (file == null) {
+
+            return;
+        }
+
+
+        // =====================================================
+        // 处理非空文件夹
+        // =====================================================
+
+        if (
+                file.isDirectory()
+                        && file.listFiles() != null
+                        && file.listFiles().length > 0
+        ) {
+
+            int result =
+                    JOptionPane.showConfirmDialog(
+                            this,
+                            "该文件夹不是空的。\n"
+                                    + "确定递归删除整个文件夹吗？",
+                            "删除资源",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE
+                    );
+
+
+            if (
+                    result
+                            != JOptionPane.YES_OPTION
+            ) {
+
+                return;
+            }
+
+        } else {
+
+            int result =
+                    JOptionPane.showConfirmDialog(
+                            this,
+                            "确定删除：\n"
+                                    + file.getName()
+                                    + "？",
+                            "删除资源",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE
+                    );
+
+
+            if (
+                    result
+                            != JOptionPane.YES_OPTION
+            ) {
+
+                return;
+            }
+        }
+
+
+        // =====================================================
+        // 删除
+        // =====================================================
+
+        try {
+
+            resourceManager.delete(
+                    file
+            );
+
+
+            // =================================================
+            // 当前文件已经不存在
+            // =================================================
+
+            if (
+                    currentFile != null
+                            && (
+                            currentFile.equals(file)
+                                    || isInside(
+                                    file,
+                                    currentFile
+                            )
+                    )
+            ) {
+
+                currentFile = null;
+
+                scriptEditorPanel.clear();
+            }
+
+
+            resourcePanel.reload(
+                    projectManager.getResourcesDirectory()
+            );
+
+
+            updateStatus();
+
+
+        } catch (Exception ex) {
+
+            showError(
+                    "删除资源失败",
+                    ex
             );
         }
     }
@@ -1024,9 +1282,7 @@ public class EditorWindow extends JFrame {
 
     private void runGame() {
 
-        if (
-                !projectManager.hasProject()
-        ) {
+        if (!projectManager.hasProject()) {
 
             JOptionPane.showMessageDialog(
                     this,
@@ -1039,15 +1295,43 @@ public class EditorWindow extends JFrame {
         }
 
 
-        saveFile();
+        // =====================================================
+        // 保存当前修改
+        // =====================================================
+
+        if (
+                scriptEditorPanel.isModified()
+        ) {
+
+            if (!saveCurrentFile()) {
+
+                return;
+            }
+        }
 
 
-        JOptionPane.showMessageDialog(
-                this,
-                "运行功能下一步接入 Runtime。",
-                "MiniGalEngine",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        // =====================================================
+        // 启动 Runtime
+        // =====================================================
+
+        try {
+
+            setVisible(false);
+
+
+            runtimeLauncher.launch();
+
+
+        } catch (Exception ex) {
+
+            setVisible(true);
+
+
+            showError(
+                    "游戏启动失败",
+                    ex
+            );
+        }
     }
 
 
@@ -1067,675 +1351,157 @@ public class EditorWindow extends JFrame {
 
 
     // =========================================================
-    // 状态栏
+    // 未保存确认
     // =========================================================
 
-    private JPanel createStatusBar() {
+    private boolean confirmSaveIfNeeded() {
 
-        JPanel bar =
-                new JPanel(
-                        new BorderLayout()
+        if (
+                !scriptEditorPanel.isModified()
+                        || currentFile == null
+        ) {
+
+            return true;
+        }
+
+
+        int result =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        "文件 "
+                                + currentFile.getName()
+                                + " 已被修改，是否保存？",
+                        "未保存修改",
+                        JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.WARNING_MESSAGE
                 );
 
 
-        bar.setBackground(
-                EditorConstants.PANEL
-        );
+        // =====================================================
+        // Cancel
+        // =====================================================
+
+        if (
+                result
+                        == JOptionPane.CANCEL_OPTION
+        ) {
+
+            return false;
+        }
 
 
-        bar.setBorder(
-                new MatteBorder(
-                        1,
-                        0,
-                        0,
-                        0,
-                        EditorConstants.BORDER
-                )
-        );
+        // =====================================================
+        // Yes
+        // =====================================================
+
+        if (
+                result
+                        == JOptionPane.YES_OPTION
+        ) {
+
+            return saveCurrentFile();
+        }
 
 
-        statusLabel =
-                new JLabel(
-                        "  未打开项目"
-                );
+        // =====================================================
+        // No
+        // =====================================================
+
+        if (
+                result
+                        == JOptionPane.NO_OPTION
+        ) {
+
+            scriptEditorPanel.markSaved();
+
+            return true;
+        }
 
 
-        statusLabel.setForeground(
-                EditorConstants.TEXT_SECONDARY
-        );
-
-
-        JLabel version =
-                new JLabel(
-                        EditorConstants.APP_NAME
-                                + "  "
-                );
-
-
-        version.setForeground(
-                EditorConstants.TEXT_SECONDARY
-        );
-
-
-        bar.add(
-                statusLabel,
-                BorderLayout.WEST
-        );
-
-
-        bar.add(
-                version,
-                BorderLayout.EAST
-        );
-
-
-        return bar;
+        return false;
     }
 
 
     // =========================================================
-    // 更新状态
+    // 判断 file 是否在 root 内
+    // =========================================================
+
+    private boolean isInside(
+            File root,
+            File file
+    ) {
+
+        if (
+                root == null
+                        || file == null
+        ) {
+
+            return false;
+        }
+
+
+        try {
+
+            return file.getCanonicalFile()
+                    .toPath()
+                    .normalize()
+                    .startsWith(
+                            root.getCanonicalFile()
+                                    .toPath()
+                                    .normalize()
+                    );
+
+        } catch (Exception e) {
+
+            return false;
+        }
+    }
+
+
+    // =========================================================
+    // 状态
     // =========================================================
 
     private void updateStatus() {
 
+        statusBarPanel.update(
+                projectManager.getProjectRoot(),
+                currentFile,
+                scriptEditorPanel.isModified()
+        );
+    }
+
+
+    // =========================================================
+    // 错误
+    // =========================================================
+
+    private void showError(
+            String title,
+            Exception ex
+    ) {
+
+        String message =
+                ex.getMessage();
+
+
         if (
-                !projectManager.hasProject()
+                message == null
+                        || message.isBlank()
         ) {
 
-            statusLabel.setText(
-                    "  未打开项目"
-            );
-
-            return;
+            message =
+                    ex.getClass()
+                            .getSimpleName();
         }
 
 
-        File project =
-                projectManager.getProjectRoot();
-
-
-        statusLabel.setText(
-                "  项目："
-                        + project.getName()
-        );
-    }
-
-
-    // =========================================================
-    // 主区域
-    // =========================================================
-
-    private JPanel createMainContent() {
-
-        JPanel root =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-
-        root.setBackground(
-                EditorConstants.BACKGROUND
-        );
-
-
-        JPanel projectPanel =
-                createProjectPanel();
-
-
-        JPanel scriptPanel =
-                createScriptEditor();
-
-
-        JPanel resourcePanel =
-                createResourcePanel();
-
-
-        // =====================================================
-        // 中间 + 右边
-        // =====================================================
-
-        JSplitPane centerRight =
-                new JSplitPane(
-                        JSplitPane.HORIZONTAL_SPLIT,
-                        scriptPanel,
-                        resourcePanel
-                );
-
-
-        centerRight.setDividerLocation(
-                850
-        );
-
-
-        centerRight.setBorder(
-                null
-        );
-
-
-        centerRight.setBackground(
-                EditorConstants.BACKGROUND
-        );
-
-
-        // =====================================================
-        // 左边 + 中间
-        // =====================================================
-
-        JSplitPane mainSplit =
-                new JSplitPane(
-                        JSplitPane.HORIZONTAL_SPLIT,
-                        projectPanel,
-                        centerRight
-                );
-
-
-        mainSplit.setDividerLocation(
-                EditorConstants.PROJECT_PANEL_WIDTH
-        );
-
-
-        mainSplit.setBorder(
-                null
-        );
-
-
-        mainSplit.setBackground(
-                EditorConstants.BACKGROUND
-        );
-
-
-        root.add(
-                mainSplit,
-                BorderLayout.CENTER
-        );
-
-
-        return root;
-    }
-
-
-    // =========================================================
-    // Project Panel
-    // =========================================================
-
-    private JPanel createProjectPanel() {
-
-        JPanel panel =
-                createPanel();
-
-
-        JLabel title =
-                createSectionTitle(
-                        EditorConstants.PROJECT_TITLE
-                );
-
-
-        panel.add(
+        JOptionPane.showMessageDialog(
+                this,
+                message,
                 title,
-                BorderLayout.NORTH
+                JOptionPane.ERROR_MESSAGE
         );
-
-
-        FileTreeNode root =
-                new FileTreeNode(
-                        new File(
-                                "未打开项目"
-                        )
-                );
-
-
-        projectTree =
-                new JTree(
-                        root
-                );
-
-
-        projectTree.setBackground(
-                EditorConstants.PANEL
-        );
-
-
-        projectTree.setForeground(
-                EditorConstants.TEXT
-        );
-
-
-        projectTree.setRowHeight(
-                EditorConstants.TREE_ROW_HEIGHT
-        );
-
-
-        projectTree.setBorder(
-                new EmptyBorder(
-                        8,
-                        5,
-                        8,
-                        5
-                )
-        );
-
-
-        projectTree.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.PLAIN,
-                        EditorConstants.UI_FONT_SIZE
-                )
-        );
-
-
-        JScrollPane scroll =
-                new JScrollPane(
-                        projectTree
-                );
-
-
-        scroll.setBorder(
-                null
-        );
-
-
-        scroll.getViewport()
-                .setBackground(
-                        EditorConstants.PANEL
-                );
-
-
-        panel.add(
-                scroll,
-                BorderLayout.CENTER
-        );
-
-
-        setupProjectTreeListener();
-
-
-        return panel;
-    }
-
-
-    // =========================================================
-    // Script Editor
-    // =========================================================
-
-    private JPanel createScriptEditor() {
-
-        JPanel panel =
-                createPanel();
-
-
-        JLabel title =
-                createSectionTitle(
-                        EditorConstants.SCRIPT_TITLE
-                );
-
-
-        panel.add(
-                title,
-                BorderLayout.NORTH
-        );
-
-
-        scriptEditor =
-                new JTextArea();
-
-
-        scriptEditor.setBackground(
-                EditorConstants.EDITOR_BACKGROUND
-        );
-
-
-        scriptEditor.setForeground(
-                EditorConstants.TEXT
-        );
-
-
-        scriptEditor.setCaretColor(
-                Color.WHITE
-        );
-
-
-        scriptEditor.setSelectionColor(
-                new Color(
-                        60,
-                        75,
-                        120
-                )
-        );
-
-
-        scriptEditor.setFont(
-                new Font(
-                        EditorConstants.CODE_FONT,
-                        Font.PLAIN,
-                        EditorConstants.CODE_FONT_SIZE
-                )
-        );
-
-
-        scriptEditor.setTabSize(
-                4
-        );
-
-
-        scriptEditor.setLineWrap(
-                false
-        );
-
-
-        JScrollPane scroll =
-                new JScrollPane(
-                        scriptEditor
-                );
-
-
-        scroll.setBorder(
-                null
-        );
-
-
-        scroll.getViewport()
-                .setBackground(
-                        EditorConstants.EDITOR_BACKGROUND
-                );
-
-
-        panel.add(
-                scroll,
-                BorderLayout.CENTER
-        );
-
-
-        return panel;
-    }
-
-
-    // =========================================================
-    // Resource Panel
-    // =========================================================
-
-    private JPanel createResourcePanel() {
-
-        JPanel panel =
-                createPanel();
-
-
-        JLabel title =
-                createSectionTitle(
-                        EditorConstants.RESOURCE_TITLE
-                );
-
-
-        panel.add(
-                title,
-                BorderLayout.NORTH
-        );
-
-
-        FileTreeNode root =
-                new FileTreeNode(
-                        new File(
-                                "暂无资源"
-                        )
-                );
-
-
-        resourceTree =
-                new JTree(
-                        root
-                );
-
-
-        resourceTree.setBackground(
-                EditorConstants.PANEL
-        );
-
-
-        resourceTree.setForeground(
-                EditorConstants.TEXT
-        );
-
-
-        resourceTree.setRowHeight(
-                EditorConstants.RESOURCE_TREE_ROW_HEIGHT
-        );
-
-
-        resourceTree.setBorder(
-                new EmptyBorder(
-                        8,
-                        5,
-                        8,
-                        5
-                )
-        );
-
-
-        resourceTree.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.PLAIN,
-                        EditorConstants.UI_FONT_SIZE
-                )
-        );
-
-
-        JScrollPane scroll =
-                new JScrollPane(
-                        resourceTree
-                );
-
-
-        scroll.setBorder(
-                null
-        );
-
-
-        scroll.getViewport()
-                .setBackground(
-                        EditorConstants.PANEL
-                );
-
-
-        panel.add(
-                scroll,
-                BorderLayout.CENTER
-        );
-
-
-        setupResourceTreeListener();
-
-
-        return panel;
-    }
-
-
-    // =========================================================
-    // 创建 Panel
-    // =========================================================
-
-    private JPanel createPanel() {
-
-        JPanel panel =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-
-        panel.setBackground(
-                EditorConstants.PANEL
-        );
-
-
-        return panel;
-    }
-
-
-    // =========================================================
-    // Section Title
-    // =========================================================
-
-    private JLabel createSectionTitle(
-            String text
-    ) {
-
-        JLabel label =
-                new JLabel(
-                        "  " + text
-                );
-
-
-        label.setPreferredSize(
-                new Dimension(
-                        0,
-                        42
-                )
-        );
-
-
-        label.setForeground(
-                EditorConstants.TEXT_SECONDARY
-        );
-
-
-        label.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.BOLD,
-                        12
-                )
-        );
-
-
-        label.setBorder(
-                new MatteBorder(
-                        0,
-                        0,
-                        1,
-                        0,
-                        EditorConstants.BORDER
-                )
-        );
-
-
-        return label;
-    }
-
-
-    // =========================================================
-    // Button
-    // =========================================================
-
-    private JButton createButton(
-            String text
-    ) {
-
-        JButton button =
-                new JButton(
-                        text
-                );
-
-
-        button.setForeground(
-                EditorConstants.TEXT
-        );
-
-
-        button.setBackground(
-                EditorConstants.PANEL_LIGHT
-        );
-
-
-        button.setFocusPainted(
-                false
-        );
-
-
-        button.setBorder(
-                BorderFactory.createEmptyBorder(
-                        7,
-                        14,
-                        7,
-                        14
-                )
-        );
-
-
-        button.setFont(
-                new Font(
-                        EditorConstants.UI_FONT,
-                        Font.PLAIN,
-                        13
-                )
-        );
-
-
-        return button;
-    }
-
-
-    // =========================================================
-    // 分隔线
-    // =========================================================
-
-    private Component createSeparator() {
-
-        JPanel separator =
-                new JPanel();
-
-
-        separator.setPreferredSize(
-                new Dimension(
-                        15,
-                        1
-                )
-        );
-
-
-        separator.setOpaque(
-                false
-        );
-
-
-        return separator;
-    }
-
-
-    // =========================================================
-    // 文件树节点
-    // =========================================================
-
-    private static class FileTreeNode
-            extends DefaultMutableTreeNode {
-
-        private final File file;
-
-
-        public FileTreeNode(
-                File file
-        ) {
-
-            super(
-                    file.getName()
-            );
-
-
-            this.file =
-                    file;
-        }
-
-
-        public File getFile() {
-
-            return file;
-        }
-
-
-        @Override
-        public String toString() {
-
-            return file.getName();
-        }
     }
 }
+
